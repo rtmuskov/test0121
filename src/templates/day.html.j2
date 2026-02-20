@@ -1,0 +1,101 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ seo.title }}</title>
+  <meta name="description" content="{{ seo.description }}" />
+  <link rel="canonical" href="{{ seo.canonical_url }}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="{{ seo.title }}" />
+  <meta property="og:description" content="{{ seo.description }}" />
+  <meta property="og:url" content="{{ seo.canonical_url }}" />
+  <link rel="stylesheet" href="/assets/style.css" />
+  <script type="application/ld+json">{{ schema_json | safe }}</script>
+</head>
+<body>
+  <div class="container">
+    <nav class="tabs">
+      <a href="/yesterday/" {% if slug == 'yesterday' %}aria-current="page"{% endif %}>Вчера</a>
+      <a href="/today/" {% if slug == 'today' %}aria-current="page"{% endif %}>Сегодня</a>
+      <a href="/tomorrow/" {% if slug == 'tomorrow' %}aria-current="page"{% endif %}>Завтра</a>
+    </nav>
+
+    <header class="meta" style="margin-bottom:12px;">
+      <div>{{ label_ru }}: {{ date_str_display }} | UTC {{ range_start_utc }} - {{ range_end_utc }}</div>
+      <div>Сгенерировано: {{ generated_at_utc }}</div>
+    </header>
+
+    <section style="margin-bottom:12px;">
+      <input id="q" type="search" placeholder="Поиск команды, игры, лиги" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #243248;background:#111827;color:#e5edf8;" />
+    </section>
+
+    <main id="list" class="matches"></main>
+  </div>
+
+  <script id="matches-data" type="application/json">{{ matches_json | safe }}</script>
+  <script>
+    const data = JSON.parse(document.getElementById('matches-data').textContent || '[]');
+    const list = document.getElementById('list');
+    const q = document.getElementById('q');
+
+    function safe(v){ return v == null ? '' : String(v); }
+    function esc(v){ return safe(v).replace(/[&<>"']/g, (c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+    function timeLabel(iso){
+      if(!iso) return '--:--';
+      try { return new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+      catch(_) { return '--:--'; }
+    }
+    function initial(name){ return (safe(name).trim()[0] || '?').toUpperCase(); }
+
+    function imgTag(src, cls, alt, fallbackLetter){
+      const s = safe(src).trim();
+      if(!s) return '<span class="'+cls+' img-fail">'+esc(fallbackLetter)+'</span>';
+      return '<img class="'+cls+'" src="'+esc(s)+'" alt="'+esc(alt)+'" loading="lazy" onerror="this.classList.add(\'img-fail\');this.outerHTML=\'<span class=\\\''+cls+' img-fail\\\'>'+esc(fallbackLetter)+'</span>\'" />';
+    }
+
+    function row(match){
+      const teams = Array.isArray(match.teams) ? match.teams : [];
+      const t1 = teams[0] || {};
+      const t2 = teams[1] || {};
+      const gameIcon = match.local_game_icon_path || match.game_image_url || '';
+      const score = safe(match.score_str) || 'VS';
+      const league = esc(match.league_name || '');
+      const tour = esc(match.tournament_name || '');
+      const stream = safe(match.stream_url).trim();
+
+      return `
+      <article class="match-row">
+        <div class="col-time meta">${esc(timeLabel(match.begin_at))}</div>
+        <div class="col-game">${imgTag(gameIcon, 'game-icon', match.game_name || 'game', initial(match.game_name || 'g'))}<span class="meta">${esc(match.game_name || '')}</span></div>
+        <div class="col-team">
+          <div class="team">${imgTag(t1.image_url, 'logo', t1.name || 'team', initial(t1.name || 'a'))}<span>${esc(t1.name || 'TBD')}</span></div>
+          <div class="team">${imgTag(t2.image_url, 'logo', t2.name || 'team', initial(t2.name || 'b'))}<span>${esc(t2.name || 'TBD')}</span></div>
+        </div>
+        <div class="col-score">${esc(score)}</div>
+        <div class="col-league"><span class="meta">${league}</span><span class="meta">${tour}</span></div>
+        <div class="col-watch">${stream ? `<a href="${esc(stream)}" target="_blank" rel="nofollow noopener noreferrer">Watch</a>` : '<span class="meta">-</span>'}</div>
+      </article>`;
+    }
+
+    function render(items){
+      list.innerHTML = items.map(row).join('');
+      if(!items.length){ list.innerHTML = '<article class="match-row"><div class="meta">Матчи не найдены</div></article>'; }
+    }
+
+    function applyFilter(){
+      const term = safe(q.value).trim().toLowerCase();
+      if(!term){ render(data); return; }
+      const filtered = data.filter((m) => {
+        const teams = (m.teams || []).map((t) => safe(t.name)).join(' ');
+        const hay = [m.title, m.game_name, m.league_name, m.tournament_name, teams].map(safe).join(' ').toLowerCase();
+        return hay.includes(term);
+      });
+      render(filtered);
+    }
+
+    q.addEventListener('input', applyFilter);
+    render(data);
+  </script>
+</body>
+</html>

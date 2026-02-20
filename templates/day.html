@@ -1,0 +1,93 @@
+﻿{% extends "base.html" %}
+
+{% block title %}{{ page.seo.title if page.seo else (page.label ~ " | Esports Pulse") }}{% endblock %}
+{% block meta_description %}{{ page.seo.description if page.seo else "Киберспортивные матчи." }}{% endblock %}
+{% block canonical_url %}{{ page.seo.canonical_url if page.seo else request.base_url }}{% endblock %}
+{% block og_title %}{{ page.seo.og_title if page.seo else (page.label ~ " | Esports Pulse") }}{% endblock %}
+{% block og_description %}{{ page.seo.og_description if page.seo else "Киберспортивные матчи." }}{% endblock %}
+{% block og_url %}{{ page.seo.og_url if page.seo else request.base_url }}{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h1 class="date-title">Матчи за {{ page.date_human or page.date_display or page.date_utc }}</h1>
+</section>
+
+{% if page.error %}
+<section class="panel error">
+  <h2>Ошибка API</h2>
+  <p>{{ page.error }}</p>
+</section>
+{% endif %}
+
+<section class="panel">
+  <input id="match-filter" class="search" type="search" placeholder="Поиск по команде, игре или лиге" />
+</section>
+
+<section id="match-list" class="match-list">
+  {% if page.matches %}
+    {% for match in page.matches %}
+    {% set t1 = match.teams[0] if match.teams and match.teams|length > 0 else None %}
+    {% set t2 = match.teams[1] if match.teams and match.teams|length > 1 else None %}
+    {% set status = (match.status or "unknown")|lower %}
+    {% set badge = "live" if status == "running" else ("done" if status == "finished" else ("canceled" if status in ["canceled", "cancelled", "postponed"] else "soon")) %}
+    <article class="match-shell" data-search="{{ (match.title ~ ' ' ~ (match.game_name or '') ~ ' ' ~ (match.league_name or '') ~ ' ' ~ (match.tournament_name or '') ~ ' ' ~ (t1.name if t1 else '') ~ ' ' ~ (t2.name if t2 else ''))|lower }}">
+      <div class="match-topline">
+        <span class="game-label">{{ match.game_name or "Esports" }}</span>
+        <span class="status-wrap">
+          <span class="badge {{ badge }}">{{ match.status_ru or "Неизвестно" }}</span>
+          <span class="clock">{{ match.begin_at_display or "n/a" }}</span>
+        </span>
+      </div>
+
+      <div class="match-main">
+        <div class="team side-left">
+          {% if t1 and t1.image_url %}
+            <img class="logo" src="{{ t1.image_url }}" alt="{{ t1.name or 'Team A' }}" loading="lazy" onerror="this.outerHTML='<span class=&quot;logo img-fail&quot;>{{ (t1.name[0] if t1 and t1.name else "A")|upper }}</span>';">
+          {% else %}
+            <span class="logo img-fail">{{ (t1.name[0] if t1 and t1.name else "A")|upper }}</span>
+          {% endif %}
+          <span class="team-name">{{ t1.name if t1 else "Team A" }}</span>
+        </div>
+
+        <div class="score-box">{{ match.score_str or "VS" }}</div>
+
+        <div class="team side-right">
+          {% if t2 and t2.image_url %}
+            <img class="logo" src="{{ t2.image_url }}" alt="{{ t2.name or 'Team B' }}" loading="lazy" onerror="this.outerHTML='<span class=&quot;logo img-fail&quot;>{{ (t2.name[0] if t2 and t2.name else "B")|upper }}</span>';">
+          {% else %}
+            <span class="logo img-fail">{{ (t2.name[0] if t2 and t2.name else "B")|upper }}</span>
+          {% endif %}
+          <span class="team-name">{{ t2.name if t2 else "Team B" }}</span>
+        </div>
+      </div>
+
+      <div class="match-meta">
+        <span>{{ match.league_name or "Unknown league" }}{% if match.tournament_name %} - {{ match.tournament_name }}{% endif %}</span>
+        <span class="format">Series</span>
+      </div>
+    </article>
+    {% endfor %}
+  {% else %}
+    <article class="card">
+      <p>Матчи не найдены для этой даты.</p>
+    </article>
+  {% endif %}
+</section>
+
+<script>
+  (function () {
+    const input = document.getElementById("match-filter");
+    const rows = Array.from(document.querySelectorAll(".match-shell"));
+    if (!input || !rows.length) return;
+
+    input.addEventListener("input", () => {
+      const q = input.value.trim().toLowerCase();
+      rows.forEach((row) => {
+        const hay = row.getAttribute("data-search") || "";
+        row.style.display = !q || hay.includes(q) ? "" : "none";
+      });
+    });
+  })();
+</script>
+{% endblock %}
+

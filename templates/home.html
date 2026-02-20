@@ -1,0 +1,20 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Главная | Esports Pulse{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h1>Статус матчей PandaScore</h1>
+  <p>Сайт на Python (Flask) с тремя запросами к API:</p>
+  <ul>
+    <li><code>/matches/past</code> для страницы "Вчера"</li>
+    <li><code>/matches</code> для страницы "Сегодня"</li>
+    <li><code>/matches/upcoming</code> для страницы "Завтра"</li>
+  </ul>
+  <div class="actions">
+    <a class="btn" href="/yesterday/">Открыть Вчера</a>
+    <a class="btn" href="/today/">Открыть Сегодня</a>
+    <a class="btn" href="/tomorrow/">Открыть Завтра</a>
+  </div>
+</section>
+{% endblock %}
